@@ -2,11 +2,14 @@ import ctypes
 import time
 import threading
 import psutil
+from functools import partial
 from tkinter import Tk, Label, Entry, Button, Checkbutton, StringVar, IntVar, Toplevel
 from infi.systray import SysTrayIcon
 
 MB_ICONWARNING = 0x30
 MB_SYSTEMMODAL = 0x1000
+check_battery_thread = None
+check_battery_flag = True
 
 # 언어별 텍스트 딕셔너리
 TEXTS = {
@@ -53,7 +56,7 @@ def message_box(title, text):
     ctypes.windll.user32.MessageBoxW(0, text, title, 1)
 
 # 배터리 상태 확인 함수
-def check_battery():
+def check_battery(check_battery_flag):
     while check_battery_flag:
         battery = psutil.sensors_battery()
         percent = battery.percent
@@ -75,9 +78,7 @@ def check_battery():
             time.sleep(1)
 
 # 배터리 체크 스레드 실행 함수
-def start_or_stop_check_battery_thread():
-    global check_battery_thread
-    global check_battery_flag
+def start_or_stop_check_battery_thread(check_battery_thread, check_battery_flag):
 
     if check_battery_thread is not None and check_battery_thread.is_alive():  # 스레드가 이미 실행 중이면 종료
         check_battery_flag = False
@@ -86,7 +87,7 @@ def start_or_stop_check_battery_thread():
     else:  # 스레드가 실행 중이지 않으면 시작
         write_settings()
         check_battery_flag = True  # 새로운 스레드를 위한 실행 플래그를 설정
-        check_battery_thread = threading.Thread(target=check_battery)
+        check_battery_thread = threading.Thread(target=check_battery, args=(check_battery_flag,))
         check_battery_thread.start()
         start_button.config(text=TEXTS[current_language.get()]["stop"])  # 버튼 텍스트를 '작동 중'으로 변경
 
@@ -113,19 +114,6 @@ def write_settings():
         file.write(str(disable_min_battery_alert_on_charging.get()) + "\n")
         file.write(str(disable_max_battery_alert_on_discharging.get()) + "\n")
         file.write(current_language.get() + "\n")
-
-# 배터리 체크 스레드 실행 함수
-def start_check_battery_thread():
-    global check_battery_thread
-    global check_battery_flag
-
-    if check_battery_thread is not None and check_battery_thread.is_alive():  # 스레드가 이미 실행 중이면 종료 플래그를 설정
-        check_battery_flag = False
-        check_battery_thread.join()  # 스레드가 종료될 때까지 기다림
-
-    check_battery_flag = True  # 새로운 스레드를 위한 실행 플래그를 설정
-    check_battery_thread = threading.Thread(target=check_battery)
-    check_battery_thread.start()
 
 #시스템 트레이로 보내기
 def on_quit_callback(systray):
@@ -184,7 +172,7 @@ Chkbtn_Charging.grid(row=3, column=0, columnspan=2, sticky='W')
 Chkbtn_nonCharging = Checkbutton(root, text="충전 중이 아닐 때 최대 배터리 경고 끄기", variable=disable_max_battery_alert_on_discharging)
 Chkbtn_nonCharging.grid(row=4, column=0, columnspan=2, sticky='W')
 
-start_button = Button(root, text="시작", command=start_or_stop_check_battery_thread)
+start_button = Button(root, text="시작", command=partial(start_or_stop_check_battery_thread, check_battery_thread, check_battery_flag))
 start_button.grid(row=5, column=0, sticky="EW")
 
 minimize_button = Button(root, text="트레이로 최소화", command=minimize_to_tray)
@@ -197,8 +185,6 @@ Button(root, text="English", command=lambda: change_language("en")).grid(row=6, 
 Button(root, text="한국어", command=lambda: change_language("ko")).grid(row=6, column=1, sticky="EW")
 Button(root, text="中文", command=lambda: change_language("zh")).grid(row=6, column=2, sticky="EW")
 
-check_battery_thread = None
-check_battery_flag = True
 read_settings()  # 프로그램 시작 시 저장된 설정 읽기
 update_texts()
 root.mainloop()
