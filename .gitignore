@@ -1,0 +1,4 @@
+build/
+dist/
+settings.txt
+app.spec
