@@ -10,7 +10,20 @@ from texts import TEXTS, update_texts
 MB_ICONWARNING = 0x30
 MB_SYSTEMMODAL = 0x1000
 check_battery_thread = None
-check_battery_flag = True
+
+class on_off_check:
+    def __init__(self, on_off):
+        self.on_off = on_off
+
+    def get(self):
+        return self.on_off
+    
+    def turn_on(self):
+        self.on_off = True
+
+    def turn_off(self):
+        self.on_off = False
+check_battery_flag = on_off_check(False)
 
 # 윈도우 알림 함수
 def message_box(title, text):
@@ -18,7 +31,7 @@ def message_box(title, text):
 
 # 배터리 상태 확인 함수
 def check_battery(check_battery_flag):
-    while check_battery_flag:
+    while check_battery_flag.get():
         battery = psutil.sensors_battery()
         percent = battery.percent
         charging = battery.power_plugged
@@ -33,20 +46,21 @@ def check_battery(check_battery_flag):
                 TEXTS[current_language.get()]["warning"], 
                 MB_ICONWARNING | MB_SYSTEMMODAL)
                 
-        for _ in range(int(alert_interval.get()) * 60):  # 알림 주기 동안 1초 간격으로 체크
-            if not check_battery_flag:  # 종료 플래그가 설정되면 함수를 종료
+        for _ in range(int(alert_interval.get()) * 300):  # 알림 주기 동안 0.2초 간격으로 체크
+            if not check_battery_flag.get():  # 종료 플래그가 설정되면 함수를 종료
                 return
-            time.sleep(1)
+            time.sleep(0.2)
 
 # 배터리 체크 스레드 실행 함수
-def start_or_stop_check_battery_thread(check_battery_thread, check_battery_flag):
+def start_or_stop_check_battery_thread(check_battery_flag):
+    global check_battery_thread
     if check_battery_thread is not None and check_battery_thread.is_alive():  # 스레드가 이미 실행 중이면 종료
-        check_battery_flag = False
+        check_battery_flag.turn_off()  # 종료 플래그를 설정
         check_battery_thread.join()  # 스레드가 종료될 때까지 기다림
         start_button.config(text=TEXTS[current_language.get()]["start"])  # 버튼 텍스트를 '시작'으로 변경
     else:  # 스레드가 실행 중이지 않으면 시작
         write_settings()
-        check_battery_flag = True  # 새로운 스레드를 위한 실행 플래그를 설정
+        check_battery_flag.turn_on() # 새로운 스레드를 위한 실행 플래그를 설정
         check_battery_thread = threading.Thread(target=check_battery, args=(check_battery_flag,))
         check_battery_thread.start()
         start_button.config(text=TEXTS[current_language.get()]["stop"])  # 버튼 텍스트를 '중지'로 변경
@@ -84,10 +98,13 @@ def minimize_to_tray():
     root.withdraw()
 
 # 언어 변경 함수
-def change_language(new_language):
+def change_language(new_language, check_battery_flag):
     current_language.set(new_language)
     write_settings()
     update_texts(labels, current_language.get())
+    if check_battery_flag.get():
+        start_or_stop_check_battery_thread(check_battery_flag)
+        start_or_stop_check_battery_thread(check_battery_flag)
 
 # Tkinter GUI
 root = Tk()
@@ -121,7 +138,7 @@ Chkbtn_Charging.grid(row=3, column=0, columnspan=2, sticky='W')
 Chkbtn_nonCharging = Checkbutton(root, variable=disable_max_battery_alert_on_discharging)
 Chkbtn_nonCharging.grid(row=4, column=0, columnspan=2, sticky='W')
 
-start_button = Button(root, command=partial(start_or_stop_check_battery_thread, check_battery_thread, check_battery_flag))
+start_button = Button(root, command=partial(start_or_stop_check_battery_thread, check_battery_flag))
 start_button.grid(row=5, column=0, sticky="EW")
 
 minimize_button = Button(root, command=minimize_to_tray)
@@ -130,9 +147,10 @@ minimize_button.grid(row=5, column=1, columnspan=2, sticky="EW")
 menu_options = (("Show", None, lambda systray: root.deiconify()),)
 systray = SysTrayIcon("icon.ico", "배터리 체커", menu_options, on_quit=on_quit_callback)
 
-Button(root, text="English", command=lambda: change_language("en")).grid(row=6, column=0, sticky="EW")
-Button(root, text="한국어", command=lambda: change_language("ko")).grid(row=6, column=1, sticky="EW")
-Button(root, text="中文", command=lambda: change_language("zh")).grid(row=6, column=2, sticky="EW")
+Button(root, text="English", command=lambda: change_language("en", check_battery_flag)).grid(row=6, column=0, sticky="EW")
+Button(root, text="한국어", command=lambda: change_language("ko", check_battery_flag)).grid(row=6, column=1, sticky="EW")
+Button(root, text="中文", command=lambda: change_language("zh", check_battery_flag)).grid(row=6, column=2, sticky="EW")
+Button(root, text="출력", command=lambda: print("check_battery_flag:", check_battery_flag.get(), check_battery_thread)).grid(row=7, column=0, sticky="EW")
 
 labels = {"Label_low_battery": Label_low_battery, "Label_max_battery": Label_max_battery, "Label_Alert_interval":Label_Alert_interval, "Chkbtn_Charging":Chkbtn_Charging, "Chkbtn_nonCharging":Chkbtn_nonCharging, "start_button":start_button, "minimize_button":minimize_button}
 read_settings()  # 프로그램 시작 시 저장된 설정 읽기
