@@ -40,7 +40,6 @@ def check_battery(check_battery_flag):
 
 # 배터리 체크 스레드 실행 함수
 def start_or_stop_check_battery_thread(check_battery_thread, check_battery_flag):
-
     if check_battery_thread is not None and check_battery_thread.is_alive():  # 스레드가 이미 실행 중이면 종료
         check_battery_flag = False
         check_battery_thread.join()  # 스레드가 종료될 때까지 기다림
@@ -89,8 +88,6 @@ def change_language(new_language):
     current_language.set(new_language)
     write_settings()
     update_texts(labels, current_language.get())
-
-
 
 # Tkinter GUI
 root = Tk()

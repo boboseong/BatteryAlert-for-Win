@@ -2,3 +2,4 @@ build/
 dist/
 settings.txt
 app.spec
+__pycache__/
