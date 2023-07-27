@@ -5,7 +5,7 @@ import psutil
 from functools import partial
 from tkinter import Tk, Label, Entry, Button, Checkbutton, StringVar, IntVar
 from infi.systray import SysTrayIcon
-from texts import TEXTS
+from texts import TEXTS, update_texts
 
 MB_ICONWARNING = 0x30
 MB_SYSTEMMODAL = 0x1000
@@ -50,7 +50,7 @@ def start_or_stop_check_battery_thread(check_battery_thread, check_battery_flag)
         check_battery_flag = True  # 새로운 스레드를 위한 실행 플래그를 설정
         check_battery_thread = threading.Thread(target=check_battery, args=(check_battery_flag,))
         check_battery_thread.start()
-        start_button.config(text=TEXTS[current_language.get()]["stop"])  # 버튼 텍스트를 '작동 중'으로 변경
+        start_button.config(text=TEXTS[current_language.get()]["stop"])  # 버튼 텍스트를 '중지'로 변경
 
 # 설정 파일 읽기 함수
 def read_settings():
@@ -88,18 +88,9 @@ def minimize_to_tray():
 def change_language(new_language):
     current_language.set(new_language)
     write_settings()
-    update_texts()
+    update_texts(labels, current_language.get())
 
-# 버튼 텍스트 업데이트 함수
-def update_texts():
-    start_button.config(text=TEXTS[current_language.get()]["start"])
-    minimize_button.config(text=TEXTS[current_language.get()]["minimize"])
-    Label_max_battery.config(text=TEXTS[current_language.get()]["max_battery"])
-    Label_low_battery.config(text=TEXTS[current_language.get()]["min_battery"])
-    Label_Alert_interval.config(text=TEXTS[current_language.get()]["alert_interval"])
-    Chkbtn_Charging.config(text=TEXTS[current_language.get()]["disable_min_battery"])
-    Chkbtn_nonCharging.config(text=TEXTS[current_language.get()]["disable_max_battery"])
-    # 나머지 위젯 텍스트를 여기에 업데이트
+
 
 # Tkinter GUI
 root = Tk()
@@ -128,15 +119,15 @@ Entry(root, textvariable=max_battery).grid(row=0, column=1)
 Entry(root, textvariable=min_battery).grid(row=1, column=1)
 Entry(root, textvariable=alert_interval).grid(row=2, column=1)
 
-Chkbtn_Charging = Checkbutton(root, text="충전 중일 때 최소 배터리 경고 끄기", variable=disable_min_battery_alert_on_charging)
+Chkbtn_Charging = Checkbutton(root, variable=disable_min_battery_alert_on_charging)
 Chkbtn_Charging.grid(row=3, column=0, columnspan=2, sticky='W')
-Chkbtn_nonCharging = Checkbutton(root, text="충전 중이 아닐 때 최대 배터리 경고 끄기", variable=disable_max_battery_alert_on_discharging)
+Chkbtn_nonCharging = Checkbutton(root, variable=disable_max_battery_alert_on_discharging)
 Chkbtn_nonCharging.grid(row=4, column=0, columnspan=2, sticky='W')
 
-start_button = Button(root, text="시작", command=partial(start_or_stop_check_battery_thread, check_battery_thread, check_battery_flag))
+start_button = Button(root, command=partial(start_or_stop_check_battery_thread, check_battery_thread, check_battery_flag))
 start_button.grid(row=5, column=0, sticky="EW")
 
-minimize_button = Button(root, text="트레이로 최소화", command=minimize_to_tray)
+minimize_button = Button(root, command=minimize_to_tray)
 minimize_button.grid(row=5, column=1, columnspan=2, sticky="EW")
 
 menu_options = (("Show", None, lambda systray: root.deiconify()),)
@@ -146,6 +137,7 @@ Button(root, text="English", command=lambda: change_language("en")).grid(row=6, 
 Button(root, text="한국어", command=lambda: change_language("ko")).grid(row=6, column=1, sticky="EW")
 Button(root, text="中文", command=lambda: change_language("zh")).grid(row=6, column=2, sticky="EW")
 
+labels = {"Label_low_battery": Label_low_battery, "Label_max_battery": Label_max_battery, "Label_Alert_interval":Label_Alert_interval, "Chkbtn_Charging":Chkbtn_Charging, "Chkbtn_nonCharging":Chkbtn_nonCharging, "start_button":start_button, "minimize_button":minimize_button}
 read_settings()  # 프로그램 시작 시 저장된 설정 읽기
-update_texts()
+update_texts(labels, current_language.get())
 root.mainloop()

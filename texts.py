@@ -37,3 +37,14 @@ TEXTS = {
         "battery_status": "电池状态超出范围。当前电池： {}%",
     },
 }
+
+# 버튼 텍스트 업데이트 함수
+def update_texts(labels, current_language):
+    labels["start_button"].config(text=TEXTS[current_language]["start"])
+    labels["minimize_button"].config(text=TEXTS[current_language]["minimize"])
+    labels["Label_max_battery"].config(text=TEXTS[current_language]["max_battery"])
+    labels["Label_low_battery"].config(text=TEXTS[current_language]["min_battery"])
+    labels["Label_Alert_interval"].config(text=TEXTS[current_language]["alert_interval"])
+    labels["Chkbtn_Charging"].config(text=TEXTS[current_language]["disable_min_battery"])
+    labels["Chkbtn_nonCharging"].config(text=TEXTS[current_language]["disable_max_battery"])
+    # 나머지 위젯 텍스트를 여기에 업데이트
